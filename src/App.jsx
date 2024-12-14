@@ -47,6 +47,9 @@ import {
   Image,
   ImageToolbar,
   ImageUpload,
+  ImageResize,
+  MediaEmbed,
+  SourceEditing,
 } from "ckeditor5";
 
 import "ckeditor5/ckeditor5.css";
@@ -67,7 +70,7 @@ export default function App() {
     return () => setIsLayoutReady(false);
   }, []);
 
-  class MyUploadAdapter {
+  class ImageUploadAdapter {
     constructor(loader) {
       this.loader = loader;
     }
@@ -106,11 +109,54 @@ export default function App() {
     }
   }
 
+  class VideoUploadAdapter {
+    constructor(loader) {
+      this.loader = loader;
+    }
+
+    upload() {
+      return this.loader.file.then(
+        (file) =>
+          new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              resolve({
+                default: reader.result,
+              });
+            };
+            reader.onerror = (error) => {
+              reject(error);
+            };
+            reader.readAsDataURL(file);
+          })
+      );
+    }
+
+    abort() {
+      // Handle abort if needed
+    }
+  }
+
   class MyCustomUploadAdapterPlugin {
+    static get requires() {
+      return ["FileRepository"];
+    }
+
     constructor(editor) {
-      // Initialize plugin if needed
-      editor.plugins.get("FileRepository").createUploadAdapter = (loader) => {
-        return new MyUploadAdapter(loader);
+      this.editor = editor;
+    }
+
+    init() {
+      this.editor.plugins.get("FileRepository").createUploadAdapter = (
+        loader
+      ) => {
+        return loader.file.then((file) => {
+          if (file.type.startsWith("image/")) {
+            return new ImageUploadAdapter(loader);
+          } else if (file.type.startsWith("video/")) {
+            return new VideoUploadAdapter(loader);
+          }
+        });
       };
     }
   }
@@ -158,6 +204,9 @@ export default function App() {
             "indent",
             "|",
             "uploadImage",
+            "imageResize",
+            "mediaEmbed",
+            "sourceEditing",
           ],
           shouldNotGroupWhenFull: true,
         },
@@ -207,6 +256,9 @@ export default function App() {
           Image,
           ImageToolbar,
           ImageUpload,
+          ImageResize,
+          MediaEmbed,
+          SourceEditing,
           MyCustomUploadAdapterPlugin,
         ],
         fontFamily: {
